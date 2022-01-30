@@ -18,4 +18,5 @@ Use right and left arrow keys to move the block left and right. Press down to dr
 
 
 ## Gameplay
+Click on the image below to open it up in youtube.
 [![Link to video](https://img.youtube.com/vi/0i77tT2IIoU/0.jpg)](https://www.youtube.com/watch?v=0i77tT2IIoU)
