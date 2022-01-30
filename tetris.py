@@ -10,6 +10,10 @@ startTime = 0
 
 score=0
 
+# Sounds which can be accessesd by other functions also
+dropSound=None
+mainMusic=None
+
 def printStylish(sentence):
     for i in range(len(sentence)):
         print(sentence[i], end="")
@@ -43,6 +47,10 @@ def displayBoardPG(display_surface, bg_img, board):
     display_surface.fill("#000000")
     global startTime
     display_surface.blit(bg_img, (0, 0))
+    
+    controlsImg = pygame.image.load('controls_final.png')
+    controlsImg = pygame.transform.scale(controlsImg, (300, 600))
+    display_surface.blit(controlsImg, (510, 200))
     color = colorsys.hsv_to_rgb(360*((time.time()-startTime) % 10)/1000, 1, 1)
     color = tuple([255*x for x in color])
 
@@ -50,7 +58,7 @@ def displayBoardPG(display_surface, bg_img, board):
     pygame.draw.line(display_surface, color, (508, 8), (8, 8), 2)
     pygame.draw.line(display_surface, color, (508, 8), (508, 808), 2)
     pygame.draw.line(display_surface, color, (8, 808), (508, 808), 2)
-
+    
     colorList = [(110, 255, 214), (255, 110, 176), (244, 255, 110),
                  (0, 112, 255), (116, 255, 110), (110, 0, 255), (255,255,255)]
     # Drawing the board
@@ -63,12 +71,13 @@ def displayBoardPG(display_surface, bg_img, board):
     font = pygame.font.SysFont("Lucida Sans TypeWriter Regular", 36)  
     text = font.render(scoreStr, True, color)
     textRect=text.get_rect()
-    textRect.center=(605,100)
+    k=50
+    textRect.center=(605+k,100)
     #pygame.draw.rect
     font2 = pygame.font.SysFont("Lucida Sans TypeWriter Regular", 48)
     text2 = font.render("Score", True, (255,255,255))
     textRect2=text2.get_rect()
-    textRect2.center=(605,30)
+    textRect2.center=(605+k,30)
     display_surface.blit(text, textRect)
     display_surface.blit(text2, textRect2)
 
@@ -84,15 +93,16 @@ def displayBoardBorderPG(display_surface):
     pygame.draw.line(display_surface, color, (508, 8), (508, 808), 2)
     pygame.draw.line(display_surface, color, (8, 808), (508, 808), 2)
     font = pygame.font.SysFont("Lucida Sans TypeWriter Regular", 36)
-    
+    k=50
     scoreStr=f"{score:08d}"
     text = font.render(scoreStr, True, color)
     textRect=text.get_rect()
-    textRect.center=(605,100)
-    pygame.draw.line(display_surface, color, (514, 85), (514, 115), 2)
-    pygame.draw.line(display_surface, color, (514, 85), (694, 85), 2)
-    pygame.draw.line(display_surface, color, (514, 115), (694, 115), 2)
-    pygame.draw.line(display_surface, color, (694, 85), (694,115), 2)
+    textRect.center=(605+k,100)
+    
+    pygame.draw.line(display_surface, color, (514+k, 85), (514+k, 115), 2)
+    pygame.draw.line(display_surface, color, (514+k, 85), (694+k, 85), 2)
+    pygame.draw.line(display_surface, color, (514+k, 115), (694+k, 115), 2)
+    pygame.draw.line(display_surface, color, (694+k, 85), (694+k,115), 2)
     display_surface.blit(text, textRect)
 
     pygame.display.flip()
@@ -111,9 +121,11 @@ def rotateRight(blockMatrix, blockMatrixPosition, game_board):
         newBlockMatrix[2][2]=blockMatrix[0][2]
         for i in range(len(newBlockMatrix)):
             for j in range(len(newBlockMatrix[i])):
-                if(newBlockMatrix[i][j]!=0 and game_board[blockMatrixPosition[0]+i][blockMatrixPosition[1]+j]!=0):
+                if(newBlockMatrix[i][j]!=0 and game_board[blockMatrixPosition[0]+i][(blockMatrixPosition[1]+j)%10]!=0):
                     return blockMatrix
         return newBlockMatrix
+    else:
+        return blockMatrix
 
 def generateBlock():
     x = [1, 2, 3, 4, 5, 6, 7]
@@ -215,15 +227,16 @@ def handleLineClears(game_board):
         return True
 
 def gameOver(display_surface):
+    pygame.mixer.stop()
     print("Game got over")
     global score
     font = pygame.font.SysFont("Times new Roman", 36)  
     text = font.render("GAME OVER", True, (255,255,255))
     text2 = font.render("YOUR SCORE WAS " + str(score), True, (255,255,255)) 
     textRect = text.get_rect()
-    textRect.center= (300,382)
+    textRect.center= (400,382)
     textRect2 = text2.get_rect()
-    textRect2.center= (300,418)
+    textRect2.center= (400,418)
     display_surface.fill("#000000")
     display_surface.blit(text, textRect)
     display_surface.blit(text2, textRect2)
@@ -236,13 +249,18 @@ def gameOver(display_surface):
 
 def mainGame(board_dimensions):
     pygame.init()
-    global startTime
+    global startTime, dropSound
     startTime = time.time()
-    display_surface = pygame.display.set_mode((700, 816))
+    display_surface = pygame.display.set_mode((800, 816))
     image = pygame.image.load('bg_final.jpg')
     image = pygame.transform.scale(image, (600, 816))
 
     display_surface.blit(image, (0, 0))
+    pygame.mixer.init()
+    dropSound=pygame.mixer.Sound("drop.wav")
+    paused=True
+
+    mainMusic=pygame.mixer.Sound("main_music.wav")
 
     game_board = createBoard(board_dimensions)  # Creates the board in an array
     blockMatrix = generateBlock()  # 3x3 block, which acts as the present
@@ -255,48 +273,64 @@ def mainGame(board_dimensions):
     needGeneration = True
     positionUpdated = False
     scoreUpdated=False
+
+    mainMusic.play(-1)
     while not done:
+        if(paused==True):
+            pygame.mixer.pause()
+        else:
+            pygame.mixer.unpause()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 done = True
-            elif event.type == fallEvent:
-                if(checkDownwardCollision(blockMatrix, blockMatrixPosition, game_board) == False):
-                    blockMatrixPosition[0] += 1
-                    positionUpdated = True
-                else:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_c:
+                    #print("C key pressed")
                     
-                    game_board = flattenBoard(
-                        blockMatrix, blockMatrixPosition, game_board)
-                    needGeneration = True
-                    scoreUpdate=handleLineClears(game_board)
-                    if(scoreUpdated):
-                        displayBoardPG(display_surface, image, flattenBoard(
-                blockMatrix, blockMatrixPosition, game_board))
-
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RIGHT:
-                    if(checkRightwardCollision(blockMatrix, blockMatrixPosition, game_board)==False):
-                        blockMatrixPosition[1] += 1
-                        positionUpdated = True
-                elif event.key == pygame.K_LEFT:
-                    if(checkLeftwardCollision(blockMatrix, blockMatrixPosition, game_board)==False):
-                        blockMatrixPosition[1] -= 1
-                        positionUpdated = True
-                elif event.key == pygame.K_DOWN:
+                    paused= not paused
+                    
+                    #print(paused)
+            if(not paused):
+                if event.type == fallEvent:
                     if(checkDownwardCollision(blockMatrix, blockMatrixPosition, game_board) == False):
                         blockMatrixPosition[0] += 1
                         positionUpdated = True
                     else:
+                        
                         game_board = flattenBoard(
                             blockMatrix, blockMatrixPosition, game_board)
                         needGeneration = True
-                elif event.key == pygame.K_SPACE:
-                    while(checkDownwardCollision(blockMatrix, blockMatrixPosition, game_board)==False):
-                        blockMatrixPosition[0] += 1
-                        positionUpdated = True
-                elif event.key == pygame.K_r:
-                    blockMatrix=rotateRight(blockMatrix, blockMatrixPosition, game_board)
-                    positionUpdated=True
+                        scoreUpdate=handleLineClears(game_board)
+                        
+                        if(scoreUpdated):
+                            displayBoardPG(display_surface, image, flattenBoard(
+                    blockMatrix, blockMatrixPosition, game_board))
+
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RIGHT:
+                        if(checkRightwardCollision(blockMatrix, blockMatrixPosition, game_board)==False):
+                            blockMatrixPosition[1] += 1
+                            positionUpdated = True
+                    elif event.key == pygame.K_LEFT:
+                        if(checkLeftwardCollision(blockMatrix, blockMatrixPosition, game_board)==False):
+                            blockMatrixPosition[1] -= 1
+                            positionUpdated = True
+                    elif event.key == pygame.K_DOWN:
+                        if(checkDownwardCollision(blockMatrix, blockMatrixPosition, game_board) == False):
+                            blockMatrixPosition[0] += 1
+                            positionUpdated = True
+                        else:
+                            game_board = flattenBoard(
+                                blockMatrix, blockMatrixPosition, game_board)
+                            needGeneration = True
+                    elif event.key == pygame.K_SPACE:
+                        while(checkDownwardCollision(blockMatrix, blockMatrixPosition, game_board)==False):
+                            blockMatrixPosition[0] += 1
+                            positionUpdated = True
+                        dropSound.play(0)
+                    elif event.key == pygame.K_r or event.key==pygame.K_UP:
+                        blockMatrix=rotateRight(blockMatrix, blockMatrixPosition, game_board)                        
+                        positionUpdated=True
                         
 
         if(needGeneration == True):
