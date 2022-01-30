@@ -14,3 +14,4 @@ Use right and left arrow keys to move the block left and right. Press down to dr
 ## Some info
 - Written in Python for a school project.
 - Uses PyGame just for rendering and effects, all processing done via fundamental arrays (called lists in python)
+- Written in less than 24 hours.
